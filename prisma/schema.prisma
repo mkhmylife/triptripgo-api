@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Hotel {
+  id              Int      @id @default(autoincrement())
+  slug            String?  @unique
+  name            String
+  nameEn          String
+  chainName       String
+  agoda_id        Int?
+  trip_id         Int?
+  zipcode         String
+  city            String
+  country         String
+  starRating      Int
+  latitude        String
+  longitude       String
+  yearOpened      Int?
+  photoUrl1       String?  @db.Text
+  photoUrl2       String?  @db.Text
+  photoUrl3       String?  @db.Text
+  photoUrl4       String?  @db.Text
+  photoUrl5       String?  @db.Text
+  description     String?  @db.Text
+  numberOfReviews Int?
+  ratingAverage   Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Log {
+  id        BigInt   @id @default(autoincrement())
+  name      String
+  payload   Json?
+  createdAt DateTime @default(now())
+}

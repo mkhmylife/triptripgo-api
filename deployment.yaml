@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: triptripgo
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: triptripgo-secret
+  namespace: triptripgo
+data:
+  AIRTABLE_KEY: a2V5RUVyVVlnMVRJeklhWWY=
+  BROWSERLESS_WS_URL: >-
+    d3NzOi8vaHlwZXJicm93c2VybGVzcy5oeXBlcmFpci5kZXYvP3Rva2VuPWh5cGVyYWlyJnN0ZWFsdGg=
+  DATABASE_URL: >-
+    bXlzcWw6Ly9raWxvd2F0dDpBVk5TX3EtZlBPanRwMkkwWGdVZ3Ata2pAcHJpdmF0ZS1oeXBlcmFpci1kby11c2VyLTgyNjIyMzMtMC5iLmRiLm9uZGlnaXRhbG9jZWFuLmNvbToyNTA2MC9raWxvd2F0dA==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: triptripgo
+spec:
+  selector:
+    matchLabels:
+      app: api
+  replicas: 1
+  minReadySeconds: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      containers:
+        - name: app
+          image: registry.digitalocean.com/kilowatt/triptripgo-api:latest
+          imagePullPolicy: Always
+          envFrom:
+            - secretRef:
+                name: api-secret
+          resources:
+            limits:
+              cpu: 100m
+              memory: 200Mi
+            requests:
+              cpu: 100m
+              memory: 200Mi
+          livenessProbe:
+            tcpSocket:
+              port: 3001
+            initialDelaySeconds: 60
+            timeoutSeconds: 2
+            periodSeconds: 2
+            successThreshold: 1
+            failureThreshold: 10
+          readinessProbe:
+            tcpSocket:
+              port: 3001
+            initialDelaySeconds: 10
+            timeoutSeconds: 2
+            periodSeconds: 2
+            successThreshold: 2
+            failureThreshold: 10
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - api
+                topologyKey: kubernetes.io/hostname
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: triptripgo
+  labels:
+    app: api
+spec:
+  ports:
+    - port: 3001
+      protocol: TCP
+  selector:
+    app: api
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: api
+  namespace: triptripgo
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    cert-manager.io/cluster-issuer: 'cloudflare-cluster-issuer'
+spec:
+  ingressClassName: nginx
+  tls:
+    - secretName: api-triptripgo-hk
+      hosts:
+        - api.triptripgo.hk
+  rules:
+    - host: api.triptripgo.hk
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api
+                port:
+                  number: 3001
+
