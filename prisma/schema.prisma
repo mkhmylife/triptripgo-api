@@ -15,12 +15,13 @@ model Hotel {
   slug            String?  @unique
   name            String
   nameEn          String
-  chainName       String
+  chainName       String?
   agoda_id        Int?
   trip_id         Int?
   zipcode         String
   city            String
   country         String
+  area            String?
   starRating      Int
   latitude        String
   longitude       String
@@ -32,6 +33,7 @@ model Hotel {
   photoUrl5       String?  @db.Text
   description     String?  @db.Text
   numberOfReviews Int?
+  numberOfRooms   Int?
   ratingAverage   Float?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

@@ -6,7 +6,7 @@ metadata:
 apiVersion: v1
 kind: Secret
 metadata:
-  name: triptripgo-secret
+  name: api-secret
   namespace: triptripgo
 data:
   AIRTABLE_KEY: a2V5RUVyVVlnMVRJeklhWWY=

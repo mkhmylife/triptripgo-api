@@ -19,8 +19,10 @@ export class HotelService {
       slug: hotel.slug,
       name: hotel.name,
       nameEn: hotel.nameEn,
+      chainName: hotel.chainName,
       city: hotel.city,
       country: hotel.country,
+      area: hotel.area,
       featuredImageUrl: hotel.photoUrl1,
       starRating: hotel.starRating,
       ratingAverage: hotel.ratingAverage,
@@ -41,11 +43,18 @@ export class HotelService {
         numberOfReviews: {
           gt: 0,
         },
+        // numberOfRooms: {
+        //   gt: 1,
+        // },
+        chainName: {
+          not: null,
+        },
       },
       orderBy: [
         {
           starRating: 'desc',
         },
+        { ratingAverage: 'desc' },
         { numberOfReviews: 'desc' },
       ],
     });
