@@ -8,7 +8,7 @@ export class GetHotelQuery {
   area?: string;
 
   @IsOptional()
-  ranking?: string;
+  chainName?: string;
 
   @IsOptional()
   limit?: string;

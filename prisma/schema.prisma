@@ -11,14 +11,14 @@ datasource db {
 }
 
 model Hotel {
-  id              Int      @id @default(autoincrement())
-  slug            String?  @unique
+  id              Int          @id @default(autoincrement())
+  slug            String?      @unique
   name            String
   nameEn          String
   chainName       String?
   agoda_id        Int?
   trip_id         Int?
-  zipcode         String
+  zipcode         String?
   city            String
   country         String
   area            String?
@@ -26,17 +26,30 @@ model Hotel {
   latitude        String
   longitude       String
   yearOpened      Int?
-  photoUrl1       String?  @db.Text
-  photoUrl2       String?  @db.Text
-  photoUrl3       String?  @db.Text
-  photoUrl4       String?  @db.Text
-  photoUrl5       String?  @db.Text
-  description     String?  @db.Text
+  photoUrl1       String?      @db.Text
+  photoUrl2       String?      @db.Text
+  photoUrl3       String?      @db.Text
+  photoUrl4       String?      @db.Text
+  photoUrl5       String?      @db.Text
+  description     String?      @db.Text
   numberOfReviews Int?
   numberOfRooms   Int?
   ratingAverage   Float?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  prices          HotelPrice[]
+}
+
+model HotelPrice {
+  id         Int      @id @default(autoincrement())
+  priceTrip  Float?
+  priceAgoda Float?
+  hotel      Hotel    @relation(fields: [hotelId], references: [id])
+  date       DateTime
+  hotelId    Int
+
+  @@unique([hotelId, date])
+  @@index([hotelId])
 }
 
 model Log {
