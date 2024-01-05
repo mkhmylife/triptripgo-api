@@ -66,6 +66,8 @@ export class HotelService {
       tags: [],
       priceAgoda: hotel.prices[0]?.priceAgoda,
       priceTrip: hotel.prices[0]?.priceTrip,
+      latitude: Number(hotel.latitude),
+      longitude: Number(hotel.longitude),
     };
   }
 
@@ -111,8 +113,8 @@ export class HotelService {
             zipcode: getRecordValue(record, 'zipcode'),
             area: getRecordValue(record, 'area'),
             starRating: (record.get('starRating') as number) || 0,
-            latitude: String(record.get('starRating')) || '0',
-            longitude: String(record.get('starRating')) || '0',
+            latitude: String(record.get('latitude')) || '0',
+            longitude: String(record.get('longitude')) || '0',
             yearOpened: getRecordValue(record, 'yearOpened'),
             photoUrl1: getRecordValue(record, 'photoUrl1'),
             photoUrl2: getRecordValue(record, 'photoUrl2'),
