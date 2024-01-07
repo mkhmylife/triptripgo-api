@@ -215,9 +215,19 @@ export class HotelService {
 
     const places = await this.prismaService.place.findMany();
     const hotels = await this.prismaService.hotel.findMany({
-      include: {
+      where: {
+        starRating: {
+          gte: 3,
+        },
+      },
+      select: {
+        id: true,
+        latitude: true,
+        longitude: true,
+        nearestMetroStationId: true,
+        nearestCheckPointId: true,
         places: {
-          include: {
+          select: {
             place: true,
           },
         },
