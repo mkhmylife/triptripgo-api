@@ -6,13 +6,16 @@ import {
   ParseIntPipe,
   Post,
   Query,
+  UseInterceptors,
 } from '@nestjs/common';
 import { HotelService } from './hotel.service';
 import { GetHotelQuery } from './dto/GetHotelQuery';
 import { LogBody } from './dto/LogBody';
 import * as moment from 'moment/moment';
+import { CacheInterceptor } from '../cacheInterceptor';
 
 @Controller('hotel')
+@UseInterceptors(CacheInterceptor)
 export class HotelController {
   constructor(private readonly hotelService: HotelService) {}
 

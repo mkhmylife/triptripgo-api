@@ -340,7 +340,11 @@ export class HotelService {
               date: moment(date).toDate(),
             },
           });
-          if (!hotelPrice) {
+          if (
+            !hotelPrice ||
+            (hotel.tripUrl && !hotelPrice.priceTrip) ||
+            (hotel.agodaUrl && !hotelPrice.priceAgoda)
+          ) {
             const prices = await this.getHotelPrice(hotel.id, date);
             if (
               (prices.agodaPrice && prices.agodaPrice > 0) ||
