@@ -11,33 +11,38 @@ datasource db {
 }
 
 model Hotel {
-  id              Int          @id @default(autoincrement())
-  slug            String?      @unique
-  name            String
-  nameEn          String
-  chainName       String?
-  agoda_id        Int?
-  trip_id         Int?
-  zipcode         String?
-  city            String
-  country         String
-  area            String?
-  starRating      Int
-  latitude        String
-  longitude       String
-  yearOpened      Int?
-  photoUrl1       String?      @db.Text
-  photoUrl2       String?      @db.Text
-  photoUrl3       String?      @db.Text
-  photoUrl4       String?      @db.Text
-  photoUrl5       String?      @db.Text
-  description     String?      @db.Text
-  numberOfReviews Int?
-  numberOfRooms   Int?
-  ratingAverage   Float?
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  prices          HotelPrice[]
+  id                    Int                    @id @default(autoincrement())
+  slug                  String?                @unique
+  name                  String
+  nameEn                String
+  chainName             String?
+  agoda_id              Int?
+  trip_id               Int?
+  zipcode               String?
+  city                  String
+  country               String
+  area                  String?
+  starRating            Int
+  latitude              String
+  longitude             String
+  yearOpened            Int?
+  photoUrl1             String?                @db.Text
+  photoUrl2             String?                @db.Text
+  photoUrl3             String?                @db.Text
+  photoUrl4             String?                @db.Text
+  photoUrl5             String?                @db.Text
+  description           String?                @db.Text
+  numberOfReviews       Int?
+  numberOfRooms         Int?
+  ratingAverage         Float?
+  prices                HotelPrice[]
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+  places                HotelToPlaceDistance[]
+  nearestMetroStation   HotelToPlaceDistance?  @relation("NearestMetroStation", fields: [nearestMetroStationId], references: [id])
+  nearestMetroStationId Int?
+  nearestCheckPoint     HotelToPlaceDistance?  @relation("NearestCheckPoint", fields: [nearestCheckPointId], references: [id])
+  nearestCheckPointId   Int?
 }
 
 model HotelPrice {
@@ -50,6 +55,29 @@ model HotelPrice {
 
   @@unique([hotelId, date])
   @@index([hotelId])
+}
+
+model Place {
+  id        Int                    @id @default(autoincrement())
+  name      String                 @unique
+  latitude  String
+  longitude String
+  group     String
+  hotels    HotelToPlaceDistance[]
+}
+
+model HotelToPlaceDistance {
+  id                        Int     @id @default(autoincrement())
+  hotel                     Hotel   @relation(fields: [hotelId], references: [id])
+  nearestHotelsByMetro      Hotel[] @relation("NearestMetroStation")
+  nearestHotelsByCheckPoint Hotel[] @relation("NearestCheckPoint")
+  place                     Place   @relation(fields: [placeId], references: [id])
+  hotelId                   Int
+  placeId                   Int
+  distance                  Float
+
+  @@unique([hotelId, placeId])
+  @@index([distance])
 }
 
 model Log {

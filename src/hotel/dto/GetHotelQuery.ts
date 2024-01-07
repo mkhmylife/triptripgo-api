@@ -11,5 +11,8 @@ export class GetHotelQuery {
   chainName?: string;
 
   @IsOptional()
+  nearby?: string;
+
+  @IsOptional()
   limit?: string;
 }

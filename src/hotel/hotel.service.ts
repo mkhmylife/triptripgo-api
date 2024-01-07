@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { GetHotelQuery } from './dto/GetHotelQuery';
 import { PrismaService } from '../prisma-service/prisma-service.service';
-import { Hotel, HotelPrice } from '@prisma/client';
+import { Hotel, HotelPrice, HotelToPlaceDistance, Place } from '@prisma/client';
 import { HttpService } from '@nestjs/axios';
 import * as moment from 'moment';
 import { LogBody } from './dto/LogBody';
@@ -15,6 +15,10 @@ interface HyperAirHotelPriceRes {
   minPrice: number;
 }
 
+type HotelToPlaceDistanceWithPlace = HotelToPlaceDistance & {
+  place: Place;
+};
+
 @Injectable()
 export class HotelService {
   constructor(
@@ -25,7 +29,23 @@ export class HotelService {
     // this.getHotelPrices().catch(console.error);
   }
 
-  private static convertHotelToDto(hotel: Hotel & { prices: HotelPrice[] }) {
+  private static convertHotelPlaceToDto(hp: HotelToPlaceDistanceWithPlace) {
+    return {
+      id: hp.place.id,
+      name: hp.place.name,
+      distance: hp.distance,
+      group: hp.place.group,
+    };
+  }
+
+  private static convertHotelToDto(
+    hotel: Hotel & {
+      prices: HotelPrice[];
+      nearestCheckPoint?: HotelToPlaceDistanceWithPlace;
+      nearestMetroStation?: HotelToPlaceDistanceWithPlace;
+      places: HotelToPlaceDistanceWithPlace[];
+    },
+  ) {
     let startDate: Moment;
     const dayINeed = 6; // for Sat
     const today = moment().isoWeekday();
@@ -56,6 +76,15 @@ export class HotelService {
       area: hotel.area,
       description: hotel.description,
       featuredImageUrl: hotel.photoUrl1,
+      imageUrls: [
+        hotel.photoUrl1,
+        hotel.photoUrl2,
+        hotel.photoUrl3,
+        hotel.photoUrl4,
+        hotel.photoUrl5,
+      ]
+        .filter((url) => url && url !== '')
+        .map((url) => url.replace('http://', 'https://')),
       starRating: hotel.starRating,
       ratingAverage: hotel.ratingAverage,
       numberOfReviews: hotel.numberOfReviews,
@@ -68,6 +97,13 @@ export class HotelService {
       priceTrip: hotel.prices[0]?.priceTrip,
       latitude: Number(hotel.latitude),
       longitude: Number(hotel.longitude),
+      nearestCheckPoint: hotel.nearestCheckPoint
+        ? HotelService.convertHotelPlaceToDto(hotel.nearestCheckPoint)
+        : undefined,
+      nearestMetroStation: hotel.nearestMetroStation
+        ? HotelService.convertHotelPlaceToDto(hotel.nearestMetroStation)
+        : undefined,
+      places: hotel.places.map(HotelService.convertHotelPlaceToDto),
     };
   }
 
@@ -131,6 +167,156 @@ export class HotelService {
         console.error(e);
       }
     }
+
+    const recordsPlaces = await airtable
+      .base('appDrweM8xSBkyNce')
+      .table('Places')
+      .select({
+        maxRecords: 999999,
+      })
+      .all();
+    for (const record of recordsPlaces) {
+      await this.prismaService.place.upsert({
+        where: {
+          name: getRecordValue(record, 'name'),
+        },
+        update: {
+          latitude: getRecordValue(record, 'latitude').toString(),
+          longitude: getRecordValue(record, 'longitude').toString(),
+          group: getRecordValue(record, 'group') || '景點',
+        },
+        create: {
+          name: getRecordValue(record, 'name'),
+          latitude: getRecordValue(record, 'latitude').toString(),
+          longitude: getRecordValue(record, 'longitude').toString(),
+          group: getRecordValue(record, 'group') || '景點',
+        },
+      });
+    }
+
+    const calcDistance = (
+      lat1: number,
+      lon1: number,
+      lat2: number,
+      lon2: number,
+    ) => {
+      const radlat1 = (Math.PI * lat1) / 180;
+      const radlat2 = (Math.PI * lat2) / 180;
+      const theta = lon1 - lon2;
+      const radtheta = (Math.PI * theta) / 180;
+      let dist =
+        Math.sin(radlat1) * Math.sin(radlat2) +
+        Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+      dist = Math.acos(dist);
+      dist = (dist * 180) / Math.PI;
+      dist = dist * 60 * 1.1515;
+      return dist * 1.609344;
+    };
+
+    const places = await this.prismaService.place.findMany();
+    const hotels = await this.prismaService.hotel.findMany({
+      include: {
+        places: {
+          include: {
+            place: true,
+          },
+        },
+      },
+    });
+    for (const hotel of hotels) {
+      for (const place of places) {
+        const existingPlace = hotel.places.find(
+          (p) => p.place.name === place.name,
+        );
+        if (!existingPlace) {
+          const distance = calcDistance(
+            Number(hotel.latitude),
+            Number(hotel.longitude),
+            Number(place.latitude),
+            Number(place.longitude),
+          );
+          await this.prismaService.hotelToPlaceDistance.create({
+            data: {
+              hotel: {
+                connect: {
+                  id: hotel.id,
+                },
+              },
+              place: {
+                connect: {
+                  id: place.id,
+                },
+              },
+              distance,
+            },
+          });
+        }
+      }
+    }
+
+    for (const hotel of hotels) {
+      const nearestCheckPoint = hotel.nearestCheckPointId;
+      if (!nearestCheckPoint) {
+        const checkPoints = places
+          .filter((p) => p.group === '口岸')
+          .map((p) => {
+            const distance = calcDistance(
+              Number(hotel.latitude),
+              Number(hotel.longitude),
+              Number(p.latitude),
+              Number(p.longitude),
+            );
+            return { ...p, ...{ distance } };
+          })
+          .sort((a, b) => a.distance - b.distance);
+        await this.prismaService.hotel.update({
+          where: {
+            id: hotel.id,
+          },
+          data: {
+            nearestCheckPoint: {
+              connect: {
+                hotelId_placeId: {
+                  hotelId: hotel.id,
+                  placeId: checkPoints[0].id,
+                },
+              },
+            },
+          },
+        });
+      }
+
+      const nearestMetroStation = hotel.nearestMetroStationId;
+      if (!nearestMetroStation) {
+        const metroStations = places
+          .filter((p) => p.group === '地鐵站')
+          .map((p) => {
+            const distance = calcDistance(
+              Number(hotel.latitude),
+              Number(hotel.longitude),
+              Number(p.latitude),
+              Number(p.longitude),
+            );
+            return { ...p, ...{ distance } };
+          })
+          .sort((a, b) => a.distance - b.distance);
+        await this.prismaService.hotel.update({
+          where: {
+            id: hotel.id,
+          },
+          data: {
+            nearestMetroStation: {
+              connect: {
+                hotelId_placeId: {
+                  hotelId: hotel.id,
+                  placeId: metroStations[0].id,
+                },
+              },
+            },
+          },
+        });
+      }
+    }
     console.log('Done Sync Database');
   }
 
@@ -188,46 +374,6 @@ export class HotelService {
     }
   }
 
-  async getHotels(query: GetHotelQuery) {
-    const hotels = await this.prismaService.hotel.findMany({
-      take: query.limit ? parseInt(query.limit) : 100,
-      where: {
-        numberOfReviews: {
-          gt: 0,
-        },
-        chainName: query.chainName
-          ? {
-              contains: query.chainName,
-            }
-          : {
-              not: null,
-            },
-        area: query.area ? query.area : undefined,
-      },
-      include: {
-        prices: {
-          take: 1,
-          orderBy: [
-            {
-              priceAgoda: 'asc',
-            },
-            {
-              priceTrip: 'asc',
-            },
-          ],
-        },
-      },
-      orderBy: [
-        {
-          starRating: 'desc',
-        },
-        { ratingAverage: 'desc' },
-        { numberOfReviews: 'desc' },
-      ],
-    });
-    return hotels.map(HotelService.convertHotelToDto);
-  }
-
   async getHotelPrice(id: number, startDate: string) {
     const endDate = moment(startDate).add(1, 'day').format('YYYY-MM-DD');
     const hotel = await this.prismaService.hotel.findUnique({
@@ -273,5 +419,89 @@ export class HotelService {
       },
     });
     return true;
+  }
+
+  async getHotels(query: GetHotelQuery) {
+    const hotels = await this.prismaService.hotel.findMany({
+      take: query.limit ? parseInt(query.limit) : 100,
+      where: {
+        numberOfReviews: {
+          gt: 0,
+        },
+        chainName: query.chainName
+          ? {
+              contains: query.chainName,
+            }
+          : {
+              not: null,
+            },
+        area: query.area ? query.area : undefined,
+        nearestCheckPointId: {
+          not: null,
+        },
+        nearestMetroStationId: {
+          not: null,
+        },
+        places: query.nearby
+          ? {
+              some: {
+                distance: {
+                  lte: 2,
+                },
+                place: {
+                  group: query.nearby,
+                },
+              },
+            }
+          : undefined,
+      },
+      include: {
+        prices: {
+          take: 1,
+          orderBy: [
+            {
+              priceAgoda: 'asc',
+            },
+            {
+              priceTrip: 'asc',
+            },
+          ],
+        },
+        nearestCheckPoint: {
+          include: {
+            place: true,
+          },
+        },
+        nearestMetroStation: {
+          include: {
+            place: true,
+          },
+        },
+        places: {
+          where: {
+            place: {
+              group: {
+                notIn: ['口岸', '地鐵站'],
+              },
+            },
+          },
+          include: {
+            place: true,
+          },
+          take: 3,
+          orderBy: {
+            distance: 'asc',
+          },
+        },
+      },
+      orderBy: [
+        {
+          starRating: 'desc',
+        },
+        { ratingAverage: 'desc' },
+        { numberOfReviews: 'desc' },
+      ],
+    });
+    return hotels.map(HotelService.convertHotelToDto);
   }
 }
