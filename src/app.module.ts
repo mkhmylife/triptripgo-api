@@ -5,6 +5,7 @@ import { HotelModule } from './hotel/hotel.module';
 import { HotelOpsModule } from './hotel-ops/hotel-ops.module';
 import { ConfigModule } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
+import { BlogModule } from './blog/blog.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CacheModule } from '@nestjs/cache-manager';
     }),
     HotelModule,
     HotelOpsModule,
+    BlogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
