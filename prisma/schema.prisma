@@ -11,8 +11,8 @@ datasource db {
 }
 
 model Hotel {
-  id                    Int                    @id @default(autoincrement())
-  slug                  String?                @unique
+  id                    Int                         @id @default(autoincrement())
+  slug                  String?                     @unique
   name                  String
   nameEn                String
   chainName             String?
@@ -26,23 +26,24 @@ model Hotel {
   latitude              String
   longitude             String
   yearOpened            Int?
-  photoUrl1             String?                @db.Text
-  photoUrl2             String?                @db.Text
-  photoUrl3             String?                @db.Text
-  photoUrl4             String?                @db.Text
-  photoUrl5             String?                @db.Text
-  description           String?                @db.Text
+  photoUrl1             String?                     @db.Text
+  photoUrl2             String?                     @db.Text
+  photoUrl3             String?                     @db.Text
+  photoUrl4             String?                     @db.Text
+  photoUrl5             String?                     @db.Text
+  description           String?                     @db.Text
   numberOfReviews       Int?
   numberOfRooms         Int?
   ratingAverage         Float?
   prices                HotelPrice[]
-  createdAt             DateTime               @default(now())
-  updatedAt             DateTime               @updatedAt
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
   places                HotelToPlaceDistance[]
-  nearestMetroStation   HotelToPlaceDistance?  @relation("NearestMetroStation", fields: [nearestMetroStationId], references: [id])
+  nearestMetroStation   HotelToPlaceDistance?       @relation("NearestMetroStation", fields: [nearestMetroStationId], references: [id])
   nearestMetroStationId Int?
-  nearestCheckPoint     HotelToPlaceDistance?  @relation("NearestCheckPoint", fields: [nearestCheckPointId], references: [id])
+  nearestCheckPoint     HotelToPlaceDistance?       @relation("NearestCheckPoint", fields: [nearestCheckPointId], references: [id])
   nearestCheckPointId   Int?
+  checkPointMetroGuides HotelCheckPointMetroGuide[]
 }
 
 model HotelPrice {
@@ -57,13 +58,25 @@ model HotelPrice {
   @@index([hotelId])
 }
 
+model HotelCheckPointMetroGuide {
+  id         Int   @id @default(autoincrement())
+  hotelId    Int
+  placeId    Int
+  guide      Json
+  hotel      Hotel @relation(fields: [hotelId], references: [id])
+  checkPoint Place @relation(fields: [placeId], references: [id])
+
+  @@unique([hotelId, placeId])
+}
+
 model Place {
-  id        Int                    @id @default(autoincrement())
-  name      String                 @unique
-  latitude  String
-  longitude String
-  group     String
-  hotels    HotelToPlaceDistance[]
+  id                         Int                         @id @default(autoincrement())
+  name                       String                      @unique
+  latitude                   String
+  longitude                  String
+  group                      String
+  hotels                     HotelToPlaceDistance[]
+  hotelCheckPointMetroGuides HotelCheckPointMetroGuide[]
 }
 
 model HotelToPlaceDistance {

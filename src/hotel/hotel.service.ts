@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { GetHotelQuery } from './dto/GetHotelQuery';
 import { PrismaService } from '../prisma-service/prisma-service.service';
-import { Hotel, HotelPrice, HotelToPlaceDistance, Place } from '@prisma/client';
+import {
+  Hotel,
+  HotelCheckPointMetroGuide,
+  HotelPrice,
+  HotelToPlaceDistance,
+  Place,
+} from '@prisma/client';
 import { HttpService } from '@nestjs/axios';
 import * as moment from 'moment';
 import { LogBody } from './dto/LogBody';
@@ -44,6 +50,9 @@ export class HotelService {
       nearestCheckPoint?: HotelToPlaceDistanceWithPlace;
       nearestMetroStation?: HotelToPlaceDistanceWithPlace;
       places: HotelToPlaceDistanceWithPlace[];
+      checkPointMetroGuides: (HotelCheckPointMetroGuide & {
+        checkPoint: Place;
+      })[];
     },
   ) {
     let startDate: Moment;
@@ -74,7 +83,7 @@ export class HotelService {
       city: hotel.city,
       country: hotel.country,
       area: hotel.area,
-      description: hotel.description,
+      // description: hotel.description,
       featuredImageUrl: hotel.photoUrl1,
       imageUrls: [
         hotel.photoUrl1,
@@ -104,6 +113,32 @@ export class HotelService {
         ? HotelService.convertHotelPlaceToDto(hotel.nearestMetroStation)
         : undefined,
       places: hotel.places.map(HotelService.convertHotelPlaceToDto),
+      checkPointMetroGuide: hotel.checkPointMetroGuides
+        .map((guide) => {
+          return {
+            id: guide.id,
+            checkPoint: guide.checkPoint.name,
+            routes: (guide.guide as any).map((route) => {
+              return {
+                departureStop: route.departureStop,
+                arrivalStop: route.arrivalStop,
+                lineNumber: route.lineNumber,
+                numberOfStops: route.numberOfStops,
+                duration: route.duration,
+              };
+            }),
+            totalDuration: (guide.guide as any).reduce(
+              (acc, route) => acc + route.duration,
+              0,
+            ),
+            totalNumberOfStops: (guide.guide as any).reduce(
+              (acc, route) => acc + route.numberOfStops,
+              0,
+            ),
+          };
+        })
+        .filter((guide) => guide.totalDuration > 0)
+        .sort((a, b) => a.totalDuration - b.totalDuration),
     };
   }
 
@@ -502,9 +537,14 @@ export class HotelService {
           include: {
             place: true,
           },
-          take: 3,
+          take: 2,
           orderBy: {
             distance: 'asc',
+          },
+        },
+        checkPointMetroGuides: {
+          include: {
+            checkPoint: true,
           },
         },
       },

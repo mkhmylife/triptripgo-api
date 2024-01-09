@@ -8,5 +8,6 @@ import { HttpModule } from '@nestjs/axios';
   imports: [PrismaServiceModule, HttpModule],
   providers: [HotelService],
   controllers: [HotelController],
+  exports: [HotelService],
 })
 export class HotelModule {}
