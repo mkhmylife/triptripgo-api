@@ -25,7 +25,7 @@ describe('HotelService', () => {
   });
 
   it('should get hotel price', async () => {
-    const prices = await service.getHotelPrice(2874, '2024-01-10');
+    const prices = await service.getHotelPrice(2874, '2024-01-30');
     console.log(prices);
   }, 9999999);
 

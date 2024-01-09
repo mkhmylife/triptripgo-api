@@ -25,6 +25,12 @@ export class HotelController {
     return 'okay';
   }
 
+  @Post('_/prices')
+  async updatePrices() {
+    this.hotelService._getHotelPrices().catch(console.error);
+    return 'okay';
+  }
+
   @Get('')
   async getHotels(@Query() query: GetHotelQuery) {
     return await this.hotelService.getHotels(query);
